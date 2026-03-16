@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timelock Wallet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #0a0a0b;
+  --bg2:       #111114;
+  --bg3:       #18181d;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --gold:      #c8922a;
+  --gold2:     #e8b04a;
+  --gold3:     #f5c96a;
+  --gold-glow: rgba(200,146,42,0.15);
+  --red:       #c23b3b;
+  --green:     #3a9a6e;
+  --green2:    #4dbf8a;
+  --blue:      #3a6ea8;
+  --blue2:     #5b9ad6;
+  --text:      #e8e6df;
+  --text2:     #8a8880;
+  --text3:     #5a5855;
+  --font-head: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --r:         10px;
+  --r2:        16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-head);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+
+/* ── Layout ── */
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 0 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 40px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--gold);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: var(--gold-glow);
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+.logo-text span { color: var(--gold2); }
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.net-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  letter-spacing: 0.5px;
+}
+.net-badge.demo { border-color: rgba(200,146,42,0.3); color: var(--gold); }
+.net-badge.connected { border-color: rgba(58,154,110,0.4); color: var(--green2); }
+
+.btn {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 18px;
+  transition: all 0.15s;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+}
+.btn-ghost:hover { border-color: var(--border2); background: var(--bg3); color: var(--text); }
+
+.btn-gold {
+  background: var(--gold);
+  color: #0a0a0b;
+  font-weight: 700;
+}
+.btn-gold:hover { background: var(--gold2); }
+.btn-gold:active { transform: scale(0.97); }
+
+.btn-danger {
+  background: rgba(194, 59, 59, 0.15);
+  border: 1px solid rgba(194,59,59,0.3);
+  color: #e86060;
+}
+.btn-danger:hover { background: rgba(194,59,59,0.22); }
+
+.btn-outline-gold {
+  background: transparent;
+  border: 1px solid rgba(200,146,42,0.4);
+  color: var(--gold2);
+}
+.btn-outline-gold:hover { background: var(--gold-glow); }
+
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-full { width: 100%; padding: 14px; font-size: 15px; }
+
+/* ── Stats bar ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 20px;
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+.stat-value.gold { color: var(--gold2); }
+.stat-value.green { color: var(--green2); }
+.stat-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+/* ── Section header ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text2);
+  letter-spacing: 0.3px;
+}
+
+/* ── Deposits grid ── */
+.deposits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.deposit-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 22px;
+  position: relative;
+  transition: border-color 0.2s;
+  overflow: hidden;
+}
+.deposit-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--gold);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.deposit-card:hover { border-color: var(--border2); }
+.deposit-card:hover::before { opacity: 1; }
+.deposit-card.status-locked::before { background: var(--gold); opacity: 1; }
+.deposit-card.status-unlocked::before { background: var(--blue2); opacity: 1; }
+.deposit-card.status-pending::before { background: var(--gold3); opacity: 1; }
+.deposit-card.status-ready::before { background: var(--green2); opacity: 1; }
+.deposit-card.status-withdrawn::before { background: var(--text3); opacity: 0.5; }
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.card-id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+}
+.card-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 4px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+.pill-locked    { background: rgba(200,146,42,0.12); color: var(--gold); border: 1px solid rgba(200,146,42,0.25); }
+.pill-unlocked  { background: rgba(91,154,214,0.12); color: var(--blue2); border: 1px solid rgba(91,154,214,0.25); }
+.pill-pending   { background: rgba(245,201,106,0.12); color: var(--gold3); border: 1px solid rgba(245,201,106,0.25); }
+.pill-ready     { background: rgba(77,191,138,0.12); color: var(--green2); border: 1px solid rgba(77,191,138,0.25); }
+.pill-withdrawn { background: rgba(90,88,85,0.2); color: var(--text3); border: 1px solid rgba(90,88,85,0.3); }
+
+.card-amount {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -1px;
+  margin-bottom: 4px;
+}
+.card-amount-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  margin-bottom: 18px;
+}
+
+/* Countdown */
+.countdown {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  margin-bottom: 18px;
+  text-align: center;
+}
+.countdown-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.countdown-time {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--gold2);
+  letter-spacing: 2px;
+}
+.countdown-time.ready { color: var(--green2); }
+.countdown-time.cooling { color: var(--gold3); }
+
+/* Progress bar */
+.progress-wrap {
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 2px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1s linear;
+  background: var(--gold);
+}
+.progress-bar.green { background: var(--green2); }
+.progress-bar.blue  { background: var(--blue2); }
+
+.card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Empty state ── */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text3);
+}
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.empty-desc { font-size: 14px; color: var(--text3); }
+
+/* ── History ── */
+.history-section { margin-bottom: 48px; }
+.history-list {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  overflow: hidden;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.history-item:last-child { border-bottom: none; }
+.history-item:hover { background: var(--bg3); }
+.history-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-gold   { background: var(--gold); }
+.dot-green  { background: var(--green2); }
+.dot-red    { background: #e86060; }
+.dot-blue   { background: var(--blue2); }
+.dot-yellow { background: var(--gold3); }
+.dot-grey   { background: var(--text3); }
+
+.history-event { flex: 1; color: var(--text2); }
+.history-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+}
+.history-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  padding: 32px;
+  width: 100%;
+  max-width: 460px;
+  transform: translateY(12px);
+  transition: transform 0.2s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.modal-title { font-size: 20px; font-weight: 700; }
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.15s;
+}
+.modal-close:hover { background: var(--bg3); color: var(--text); }
+
+/* Form */
+.field { margin-bottom: 20px; }
+.label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+.input:focus { border-color: var(--gold); }
+.input::placeholder { color: var(--text3); }
+
+.duration-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.duration-btn {
+  cursor: pointer;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text2);
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.duration-btn:hover { border-color: var(--gold); color: var(--gold); }
+.duration-btn.active { border-color: var(--gold); background: var(--gold-glow); color: var(--gold2); }
+
+.info-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.info-box.warn {
+  border-color: rgba(194,59,59,0.3);
+  background: rgba(194,59,59,0.06);
+  color: #e06060;
+}
+.info-box.success {
+  border-color: rgba(77,191,138,0.3);
+  background: rgba(77,191,138,0.06);
+  color: var(--green2);
+}
+
+/* ── Settings section ── */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.settings-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 20px;
+}
+.settings-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+.settings-desc { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
+
+/* ── Toast ── */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2000;
+}
+.toast {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 12px 18px;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 260px;
+  animation: slideIn 0.2s ease;
+  transition: opacity 0.3s, transform 0.3s;
+}
+.toast.success { border-color: rgba(77,191,138,0.4); }
+.toast.error   { border-color: rgba(194,59,59,0.4); }
+.toast.info    { border-color: rgba(200,146,42,0.4); }
+.toast-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.toast.success .toast-dot { background: var(--green2); }
+.toast.error   .toast-dot { background: #e86060; }
+.toast.info    .toast-dot { background: var(--gold); }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Penalty warning ── */
+.penalty-calc {
+  background: var(--bg3);
+  border: 1px solid rgba(194,59,59,0.25);
+  border-radius: var(--r);
+  padding: 14px;
+  margin-bottom: 20px;
+}
+.penalty-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.penalty-row:last-child { margin-bottom: 0; }
+.penalty-label { color: var(--text3); }
+.penalty-value { font-family: var(--font-mono); font-weight: 500; }
+.penalty-value.red { color: #e86060; }
+.penalty-value.green { color: var(--green2); }
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .settings-grid { grid-template-columns: 1fr; }
+  .deposits-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .stats-bar { grid-template-columns: 1fr 1fr; }
+  header { flex-direction: column; gap: 16px; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🔐</div>
+      <div>
+        <div class="logo-text">Time<span>lock</span> Wallet</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="net-badge demo" id="net-badge">● DEMO MODE</span>
+      <button class="btn btn-ghost" id="btn-connect">Connect Wallet</button>
+      <button class="btn btn-gold" onclick="openDepositModal()">+ New Deposit</button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Wallet Balance</div>
+      <div class="stat-value gold" id="stat-balance">2.847 ETH</div>
+      <div class="stat-sub" id="stat-balance-usd">≈ $9,120</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Locked</div>
+      <div class="stat-value" id="stat-locked">0.000 ETH</div>
+      <div class="stat-sub" id="stat-locked-count">0 deposits</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Withdrawable</div>
+      <div class="stat-value green" id="stat-ready">0.000 ETH</div>
+      <div class="stat-sub" id="stat-ready-count">0 ready</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Withdrawn</div>
+      <div class="stat-value" id="stat-withdrawn">0.000 ETH</div>
+      <div class="stat-sub">lifetime</div>
+    </div>
+  </div>
+
+  <!-- Active Deposits -->
+  <div class="section-header">
+    <div class="section-title">ACTIVE DEPOSITS</div>
+    <button class="btn btn-ghost btn-sm" onclick="openSettingsModal()">⚙ Settings</button>
+  </div>
+
+  <div class="deposits-grid" id="deposits-grid">
+    <div class="empty-state">
+      <div class="empty-icon">🔒</div>
+      <div class="empty-title">No deposits yet</div>
+      <div class="empty-desc">Create your first timelock deposit to start protecting your assets</div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section">
+    <div class="section-header">
+      <div class="section-title">TRANSACTION LOG</div>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="history-item" style="justify-content: center; color: var(--text3); font-size: 13px;">
+        No transactions yet
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── Deposit Modal ─── -->
+<div class="modal-overlay" id="modal-deposit">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">New Deposit</div>
+      <button class="modal-close" onclick="closeModal('modal-deposit')">✕</button>
+    </div>
+
+    <div class="field">
+      <label class="label">Amount (ETH)</label>
+      <input class="input" id="dep-amount" type="number" step="0.001" min="0.001" placeholder="0.100" />
+    </div>
+
+    <div class="field">
+      <label class="label">Label (optional)</label>
+      <input class="input" id="dep-label" type="text" placeholder="e.g. Long-term hold, Emergency fund…" maxlength="40"/>
+    </div>
+
+    <div class="field">
+      <label class="label">Lock Duration</label>
+      <div class="duration-row" style="margin-bottom:10px;">
+        <button class="duration-btn" onclick="setDuration(this,'lock',86400)">1 Day</button>
+        <button class="duration-btn" onclick="setDuration(this,'lock',604800)">1 Week</button>
+        <button class="duration-btn active" onclick="setDuration(this,'lock',2592000)">30 Days</button>
+        <button class="duration-btn" onclick="setDuration(this,'lock',7776000)">90 Days</button>
+      </div>
+      <input class="input" id="dep-lock" type="number" min="60" step="1" value="2592000" placeholder="Seconds" />
+    </div>
+
+    <div class="field">
+      <label class="label">Withdrawal Cooldown</label>
+      <div class="duration-row" style="margin-bottom:10px;">
+        <button class="duration-btn" onclick="setDuration(this,'cool',3600)">1 Hour</button>
+        <button class="duration-btn active" onclick="setDuration(this,'cool',86400)">24 Hours</button>
+        <button class="duration-btn" onclick="setDuration(this,'cool',172800)">48 Hours</button>
+        <button class="duration-btn" onclick="setDuration(this,'cool',604800)">1 Week</button>
+      </div>
+      <input class="input" id="dep-cool" type="number" min="60" step="1" value="86400" placeholder="Seconds" />
+    </div>
+
+    <div class="info-box" id="dep-preview">
+      Select an amount to preview your deposit.
+    </div>
+
+    <button class="btn btn-gold btn-full" onclick="createDeposit()">Lock Funds →</button>
+  </div>
+</div>
+
+<!-- ─── Emergency Modal ─── -->
+<div class="modal-overlay" id="modal-emergency">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" style="color:#e86060;">⚠ Emergency Withdrawal</div>
+      <button class="modal-close" onclick="closeModal('modal-emergency')">✕</button>
+    </div>
+    <div class="info-box warn">
+      This bypasses the timelock but incurs a <strong id="em-penalty-pct">5%</strong> penalty. Only use in genuine emergencies.
+    </div>
+    <div class="penalty-calc" id="em-calc">
+      <div class="penalty-row">
+        <span class="penalty-label">Deposit Amount</span>
+        <span class="penalty-value" id="em-total">—</span>
+      </div>
+      <div class="penalty-row">
+        <span class="penalty-label">Penalty (<span id="em-pct-label">5%</span>)</span>
+        <span class="penalty-value red" id="em-fee">—</span>
+      </div>
+      <div class="penalty-row" style="border-top:1px solid var(--border); padding-top:8px; margin-top:4px;">
+        <span class="penalty-label" style="font-weight:600; color:var(--text2);">You Receive</span>
+        <span class="penalty-value green" id="em-payout">—</span>
+      </div>
+    </div>
+    <button class="btn btn-danger btn-full" onclick="confirmEmergency()">Confirm Emergency Withdrawal</button>
+  </div>
+</div>
+
+<!-- ─── Settings Modal ─── -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">Wallet Settings</div>
+      <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
+    </div>
+    <div class="field">
+      <label class="label">Default Lock Duration (seconds)</label>
+      <input class="input" id="set-lock" type="number" min="60" />
+    </div>
+    <div class="field">
+      <label class="label">Default Cooldown (seconds)</label>
+      <input class="input" id="set-cool" type="number" min="60" />
+    </div>
+    <div class="field">
+      <label class="label">Emergency Penalty (%)</label>
+      <input class="input" id="set-penalty" type="number" min="0" max="30" step="0.1" />
+    </div>
+    <div class="field">
+      <label class="label">ETH Price (USD, for display)</label>
+      <input class="input" id="set-ethprice" type="number" min="1" step="1" />
+    </div>
+    <div style="display:flex; gap:10px; margin-top:8px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('modal-settings')">Cancel</button>
+      <button class="btn btn-gold" style="flex:1;" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════
+const ETH_PRICE_INIT = 3200;
+
+let state = {
+  walletBalance: 2.847,
+  totalWithdrawn: 0,
+  ethPrice: ETH_PRICE_INIT,
+  deposits: [],
+  history: [],
+  nextId: 0,
+  defaultLock: 2592000,
+  defaultCool: 86400,
+  penaltyPct: 5,
+  emergency: { depositId: null },
+};
+
+// ═══════════════════════════════════════════
+//  Init & Demo data
+// ═══════════════════════════════════════════
+function init() {
+  // Seed some demo deposits for visual richness
+  const now = Date.now() / 1000;
+  const demos = [
+    { amount: 0.5,  label: 'Long-term hold',   lock: now - 10000,    cool: 86400,  reqAt: 0 },
+    { amount: 0.25, label: 'DCA accumulation',  lock: now + 432000,   cool: 43200,  reqAt: 0 },
+    { amount: 1.0,  label: 'HODL bag',          lock: now - 5000,     cool: 3600,   reqAt: now - 7200 },
+    { amount: 0.1,  label: 'Emergency fund',    lock: now + 1800,     cool: 7200,   reqAt: 0 },
+  ];
+  demos.forEach(d => {
+    const dep = {
+      id: state.nextId++,
+      amount: d.amount,
+      label: d.label || `Deposit #${state.nextId}`,
+      lockedUntil: d.lock,
+      cooldown: d.cool,
+      requestedAt: d.reqAt,
+      withdrawn: false,
+      createdAt: now - 86400 * 3,
+    };
+    state.deposits.push(dep);
+    addHistory('deposit', dep.id, dep.amount, dep.createdAt);
+    if (dep.requestedAt) addHistory('request', dep.id, dep.amount, dep.requestedAt);
+  });
+  state.walletBalance -= demos.reduce((s, d) => s + d.amount, 0);
+  render();
+  setInterval(render, 1000);
+}
+
+// ═══════════════════════════════════════════
+//  Rendering
+// ═══════════════════════════════════════════
+function render() {
+  renderStats();
+  renderDeposits();
+  renderHistory();
+  updateDepositPreview();
+}
+
+function renderStats() {
+  const active = state.deposits.filter(d => !d.withdrawn);
+  const locked = active.reduce((s, d) => s + d.amount, 0);
+  const ready  = active.filter(d => canExecute(d)).reduce((s, d) => s + d.amount, 0);
+  const readyCt = active.filter(d => canExecute(d)).length;
+
+  document.getElementById('stat-balance').textContent = fmt(state.walletBalance) + ' ETH';
+  document.getElementById('stat-balance-usd').textContent = '≈ $' + (state.walletBalance * state.ethPrice).toLocaleString(undefined, {maximumFractionDigits: 0});
+  document.getElementById('stat-locked').textContent = fmt(locked) + ' ETH';
+  document.getElementById('stat-locked-count').textContent = active.length + ' deposit' + (active.length !== 1 ? 's' : '');
+  document.getElementById('stat-ready').textContent = fmt(ready) + ' ETH';
+  document.getElementById('stat-ready-count').textContent = readyCt + ' ready';
+  document.getElementById('stat-withdrawn').textContent = fmt(state.totalWithdrawn) + ' ETH';
+}
+
+function renderDeposits() {
+  const grid = document.getElementById('deposits-grid');
+  const active = state.deposits.filter(d => !d.withdrawn);
+  if (!active.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔒</div>
+      <div class="empty-title">No active deposits</div>
+      <div class="empty-desc">Create your first timelock deposit to start protecting your assets</div>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = active.map(dep => depositCard(dep)).join('');
+}
+
+function depositCard(dep) {
+  const now = Date.now() / 1000;
+  const status = getStatus(dep);
+  const statusLabel = { locked:'LOCKED', unlocked:'UNLOCKED', pending:'COOLING', ready:'READY', withdrawn:'DONE' }[status];
+  const pillClass  = { locked:'pill-locked', unlocked:'pill-unlocked', pending:'pill-pending', ready:'pill-ready', withdrawn:'pill-withdrawn' }[status];
+
+  let countdownHtml = '';
+  let progressHtml = '';
+
+  if (status === 'locked') {
+    const remaining = dep.lockedUntil - now;
+    const total = dep.lockedUntil - dep.createdAt;
+    const pct = Math.min(100, Math.max(0, ((now - dep.createdAt) / total) * 100));
+    countdownHtml = `<div class="countdown">
+      <div class="countdown-label">Unlocks in</div>
+      <div class="countdown-time">${fmtTime(remaining)}</div>
+    </div>`;
+    progressHtml = `<div class="progress-wrap"><div class="progress-bar" style="width:${pct.toFixed(1)}%"></div></div>`;
+  } else if (status === 'unlocked') {
+    countdownHtml = `<div class="countdown">
+      <div class="countdown-label">Status</div>
+      <div class="countdown-time" style="color:var(--blue2);">Request to withdraw</div>
+    </div>`;
+    progressHtml = `<div class="progress-wrap"><div class="progress-bar blue" style="width:100%"></div></div>`;
+  } else if (status === 'pending') {
+    const exec = dep.requestedAt + dep.cooldown;
+    const remaining = exec - now;
+    const pct = Math.min(100, Math.max(0, ((now - dep.requestedAt) / dep.cooldown) * 100));
+    countdownHtml = `<div class="countdown">
+      <div class="countdown-label">Executable in</div>
+      <div class="countdown-time cooling">${fmtTime(remaining)}</div>
+    </div>`;
+    progressHtml = `<div class="progress-wrap"><div class="progress-bar" style="width:${pct.toFixed(1)}%; background:var(--gold3)"></div></div>`;
+  } else if (status === 'ready') {
+    countdownHtml = `<div class="countdown">
+      <div class="countdown-label">Status</div>
+      <div class="countdown-time ready">Ready to withdraw</div>
+    </div>`;
+    progressHtml = `<div class="progress-wrap"><div class="progress-bar green" style="width:100%"></div></div>`;
+  }
+
+  let actionsHtml = '';
+  if (status === 'locked' || status === 'pending') {
+    actionsHtml = `<button class="btn btn-danger btn-sm" onclick="openEmergency(${dep.id})">⚡ Emergency</button>`;
+    if (status === 'pending') {
+      actionsHtml = `<button class="btn btn-danger btn-sm" onclick="cancelWithdrawal(${dep.id})">✕ Cancel</button>` + actionsHtml;
+    }
+  } else if (status === 'unlocked') {
+    actionsHtml = `
+      <button class="btn btn-outline-gold" style="flex:1;" onclick="requestWithdrawal(${dep.id})">Request Withdrawal</button>
+      <button class="btn btn-danger btn-sm" onclick="openEmergency(${dep.id})">⚡</button>`;
+  } else if (status === 'ready') {
+    actionsHtml = `<button class="btn btn-gold" style="flex:1;" onclick="executeWithdrawal(${dep.id})">Execute Withdrawal →</button>`;
+  }
+
+  const usdVal = (dep.amount * state.ethPrice).toLocaleString(undefined, {maximumFractionDigits: 0});
+
+  return `<div class="deposit-card status-${status}">
+    <div class="card-top">
+      <div>
+        <div class="card-id">DEP-${String(dep.id).padStart(4,'0')}</div>
+        <div class="card-label">${escHtml(dep.label)}</div>
+      </div>
+      <span class="status-pill ${pillClass}">${statusLabel}</span>
+    </div>
+    <div class="card-amount">${fmt(dep.amount)} ETH</div>
+    <div class="card-amount-sub">≈ $${usdVal} · Cooldown: ${fmtDuration(dep.cooldown)}</div>
+    ${countdownHtml}
+    ${progressHtml}
+    <div class="card-actions">${actionsHtml}</div>
+  </div>`;
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!state.history.length) return;
+  const items = [...state.history].reverse().slice(0, 20);
+  list.innerHTML = items.map(h => {
+    const dotMap  = { deposit:'dot-gold', request:'dot-yellow', execute:'dot-green', cancel:'dot-blue', emergency:'dot-red' };
+    const textMap = {
+      deposit:   `Deposited <strong>${fmt(h.amount)} ETH</strong>`,
+      request:   `Withdrawal requested`,
+      execute:   `Withdrew <strong>${fmt(h.amount)} ETH</strong>`,
+      cancel:    `Withdrawal cancelled`,
+      emergency: `Emergency withdrawal — <strong>${fmt(h.amount)} ETH</strong>`,
+    };
+    return `<div class="history-item">
+      <div class="history-dot ${dotMap[h.type] || 'dot-grey'}"></div>
+      <div class="history-event">${textMap[h.type] || h.type}</div>
+      <div class="history-id">DEP-${String(h.depositId).padStart(4,'0')}</div>
+      <div class="history-time">${fmtAgo(h.ts)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  Actions
+// ═══════════════════════════════════════════
+function createDeposit() {
+  const amount = parseFloat(document.getElementById('dep-amount').value);
+  const label  = document.getElementById('dep-label').value.trim() || 'Unnamed Deposit';
+  const lock   = parseInt(document.getElementById('dep-lock').value);
+  const cool   = parseInt(document.getElementById('dep-cool').value);
+
+  if (!amount || amount <= 0) return toast('Enter a valid amount', 'error');
+  if (amount > state.walletBalance) return toast('Insufficient wallet balance', 'error');
+  if (!lock || lock < 60) return toast('Lock duration must be ≥ 60 seconds', 'error');
+  if (!cool || cool < 60) return toast('Cooldown must be ≥ 60 seconds', 'error');
+
+  const now = Date.now() / 1000;
+  const dep = {
+    id: state.nextId++,
+    amount,
+    label,
+    lockedUntil: now + lock,
+    cooldown: cool,
+    requestedAt: 0,
+    withdrawn: false,
+    createdAt: now,
+  };
+
+  state.deposits.push(dep);
+  state.walletBalance = Math.max(0, state.walletBalance - amount);
+  addHistory('deposit', dep.id, dep.amount, now);
+
+  closeModal('modal-deposit');
+  toast(`Deposited ${fmt(amount)} ETH · Locked for ${fmtDuration(lock)}`, 'success');
+  render();
+}
+
+function requestWithdrawal(id) {
+  const dep = state.deposits.find(d => d.id === id);
+  if (!dep || dep.withdrawn || dep.requestedAt) return;
+  const now = Date.now() / 1000;
+  if (now < dep.lockedUntil) return toast('Deposit is still locked', 'error');
+  dep.requestedAt = now;
+  addHistory('request', id, dep.amount, now);
+  toast(`Withdrawal requested. Execute in ${fmtDuration(dep.cooldown)}`, 'info');
+  render();
+}
+
+function executeWithdrawal(id) {
+  const dep = state.deposits.find(d => d.id === id);
+  if (!dep || dep.withdrawn || !dep.requestedAt) return;
+  if (!canExecute(dep)) return toast('Cooldown period has not elapsed', 'error');
+  dep.withdrawn = true;
+  state.walletBalance += dep.amount;
+  state.totalWithdrawn += dep.amount;
+  addHistory('execute', id, dep.amount, Date.now() / 1000);
+  toast(`Withdrew ${fmt(dep.amount)} ETH to wallet`, 'success');
+  render();
+}
+
+function cancelWithdrawal(id) {
+  const dep = state.deposits.find(d => d.id === id);
+  if (!dep || !dep.requestedAt) return;
+  dep.requestedAt = 0;
+  addHistory('cancel', id, dep.amount, Date.now() / 1000);
+  toast('Withdrawal request cancelled', 'info');
+  render();
+}
+
+function openEmergency(id) {
+  const dep = state.deposits.find(d => d.id === id);
+  if (!dep) return;
+  state.emergency.depositId = id;
+  const penalty = dep.amount * (state.penaltyPct / 100);
+  const payout  = dep.amount - penalty;
+  document.getElementById('em-penalty-pct').textContent = state.penaltyPct + '%';
+  document.getElementById('em-pct-label').textContent   = state.penaltyPct + '%';
+  document.getElementById('em-total').textContent  = fmt(dep.amount) + ' ETH';
+  document.getElementById('em-fee').textContent    = '-' + fmt(penalty) + ' ETH';
+  document.getElementById('em-payout').textContent = fmt(payout) + ' ETH';
+  openModal('modal-emergency');
+}
+
+function confirmEmergency() {
+  const id = state.emergency.depositId;
+  const dep = state.deposits.find(d => d.id === id);
+  if (!dep) return;
+  const penalty = dep.amount * (state.penaltyPct / 100);
+  const payout  = dep.amount - penalty;
+  dep.withdrawn = true;
+  state.walletBalance += payout;
+  state.totalWithdrawn += dep.amount;
+  addHistory('emergency', id, payout, Date.now() / 1000);
+  closeModal('modal-emergency');
+  toast(`Emergency withdrawal. Received ${fmt(payout)} ETH (${state.penaltyPct}% penalty applied)`, 'error');
+  render();
+}
+
+function saveSettings() {
+  const lock    = parseInt(document.getElementById('set-lock').value);
+  const cool    = parseInt(document.getElementById('set-cool').value);
+  const penalty = parseFloat(document.getElementById('set-penalty').value);
+  const ethprice= parseFloat(document.getElementById('set-ethprice').value);
+  if (lock >= 60)  state.defaultLock = lock;
+  if (cool >= 60)  state.defaultCool = cool;
+  if (penalty >= 0 && penalty <= 30) state.penaltyPct = penalty;
+  if (ethprice > 0) state.ethPrice = ethprice;
+  closeModal('modal-settings');
+  toast('Settings updated', 'success');
+  render();
+}
+
+// ═══════════════════════════════════════════
+//  Helpers
+// ═══════════════════════════════════════════
+function getStatus(dep) {
+  if (dep.withdrawn) return 'withdrawn';
+  const now = Date.now() / 1000;
+  if (now < dep.lockedUntil) return 'locked';
+  if (dep.requestedAt === 0) return 'unlocked';
+  if (now < dep.requestedAt + dep.cooldown) return 'pending';
+  return 'ready';
+}
+
+function canExecute(dep) {
+  return !dep.withdrawn && dep.requestedAt && (Date.now() / 1000) >= dep.requestedAt + dep.cooldown;
+}
+
+function fmt(val) {
+  return (Math.round(val * 1000) / 1000).toFixed(3);
+}
+
+function fmtTime(secs) {
+  if (secs <= 0) return '00:00:00';
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (d > 0) return `${d}d ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m`;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function fmtDuration(secs) {
+  if (secs >= 86400 * 7) return Math.round(secs / 86400 / 7) + 'w';
+  if (secs >= 86400) return Math.round(secs / 86400) + 'd';
+  if (secs >= 3600) return Math.round(secs / 3600) + 'h';
+  return Math.round(secs / 60) + 'm';
+}
+
+function fmtAgo(ts) {
+  const diff = (Date.now() / 1000) - ts;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addHistory(type, depositId, amount, ts) {
+  state.history.push({ type, depositId, amount, ts });
+}
+
+// ═══════════════════════════════════════════
+//  Duration preset buttons
+// ═══════════════════════════════════════════
+function setDuration(btn, field, val) {
+  const inputId = field === 'lock' ? 'dep-lock' : 'dep-cool';
+  document.getElementById(inputId).value = val;
+  const row = btn.parentElement;
+  row.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateDepositPreview();
+}
+
+function updateDepositPreview() {
+  const amt  = parseFloat(document.getElementById('dep-amount')?.value);
+  const lock = parseInt(document.getElementById('dep-lock')?.value);
+  const cool = parseInt(document.getElementById('dep-cool')?.value);
+  const box  = document.getElementById('dep-preview');
+  if (!box) return;
+  if (!amt || amt <= 0) {
+    box.textContent = 'Enter an amount to preview your deposit.';
+    box.className = 'info-box';
+    return;
+  }
+  if (amt > state.walletBalance) {
+    box.textContent = `Insufficient balance. You have ${fmt(state.walletBalance)} ETH available.`;
+    box.className = 'info-box warn';
+    return;
+  }
+  const usd = (amt * state.ethPrice).toLocaleString(undefined, {maximumFractionDigits: 0});
+  box.innerHTML = `Locking <strong>${fmt(amt)} ETH</strong> (~$${usd}) for <strong>${fmtDuration(lock)}</strong>, with a <strong>${fmtDuration(cool)}</strong> cooldown after requesting withdrawal.`;
+  box.className = 'info-box success';
+}
+
+// ═══════════════════════════════════════════
+//  Modal helpers
+// ═══════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function openDepositModal() {
+  document.getElementById('dep-amount').value = '';
+  document.getElementById('dep-label').value  = '';
+  document.getElementById('dep-lock').value   = state.defaultLock;
+  document.getElementById('dep-cool').value   = state.defaultCool;
+  openModal('modal-deposit');
+}
+
+function openSettingsModal() {
+  document.getElementById('set-lock').value    = state.defaultLock;
+  document.getElementById('set-cool').value    = state.defaultCool;
+  document.getElementById('set-penalty').value = state.penaltyPct;
+  document.getElementById('set-ethprice').value= state.ethPrice;
+  openModal('modal-settings');
+}
+
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+});
+
+// ═══════════════════════════════════════════
+//  Toast
+// ═══════════════════════════════════════════
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<div class="toast-dot"></div>${escHtml(msg)}`;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; }, 3200);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ═══════════════════════════════════════════
+//  Connect Wallet (MetaMask)
+// ═══════════════════════════════════════════
+document.getElementById('btn-connect').addEventListener('click', async () => {
+  if (typeof window.ethereum === 'undefined') {
+    toast('MetaMask not detected — running in demo mode', 'info');
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (accounts.length) {
+      const addr = accounts[0];
+      document.getElementById('btn-connect').textContent = addr.slice(0,6) + '…' + addr.slice(-4);
+      document.getElementById('net-badge').textContent   = '● MAINNET';
+      document.getElementById('net-badge').className     = 'net-badge connected';
+      toast('Wallet connected: ' + addr.slice(0,6) + '…' + addr.slice(-4), 'success');
+    }
+  } catch(e) {
+    toast('Connection rejected', 'error');
+  }
+});
+
+// ── Input listeners for preview ──
+document.getElementById('dep-amount')?.addEventListener('input', updateDepositPreview);
+document.getElementById('dep-lock')?.addEventListener('input', updateDepositPreview);
+document.getElementById('dep-cool')?.addEventListener('input', updateDepositPreview);
+
+// ── Start ──
+init();
+</script>
+</body>
+</html>
