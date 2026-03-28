@@ -3,8 +3,9 @@ const fs = require("fs");
 const path = require("path");
 
 async function main() {
-  // Get the deployer account (first Hardhat test account by default)
-  const [deployer] = await ethers.getSigners();
+  // Use Account #1 as deployer so MetaMask Account #1 can call onlyOwner methods
+  const signers = await ethers.getSigners();
+  const deployer = signers[1];
 
   console.log("Deploying with account:", deployer.address);
   console.log(
@@ -20,7 +21,7 @@ async function main() {
   const penaltyRecipient    = deployer.address;   // send penalty to yourself for testing
 
   // ── Deploy ─────────────────────────────────────────────────────────
-  const TimelockWallet = await ethers.getContractFactory("TimelockWallet");
+  const TimelockWallet = await ethers.getContractFactory("TimelockWallet", deployer);
   const wallet = await TimelockWallet.deploy(
     defaultLockDuration,
     defaultCooldown,

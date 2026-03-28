@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
 <style>
 :root {
   --bg:        #0a0a0b;
@@ -969,74 +970,212 @@ function renderHistory() {
 // ═══════════════════════════════════════════
 //  Actions
 // ═══════════════════════════════════════════
-function createDeposit() {
-  const amount = parseFloat(document.getElementById('dep-amount').value);
-  const label  = document.getElementById('dep-label').value.trim() || 'Unnamed Deposit';
-  const lock   = parseInt(document.getElementById('dep-lock').value);
-  const cool   = parseInt(document.getElementById('dep-cool').value);
+// ═══════════════════════════════════════════
+//  CONTRACT INTEGRATION
+// ═══════════════════════════════════════════
+const CONTRACT_ADDRESS = "0x8464135c8F25Da09e49BC8782676a84730C318bC";
+const ABI = [
+  "function deposit(string calldata label) payable returns (uint256)",
+  "function depositWithDuration(uint256 lockDuration, uint256 cooldown, string calldata label) payable returns (uint256)",
+  "function requestWithdrawal(uint256 depositId) external",
+  "function executeWithdrawal(uint256 depositId) external",
+  "function cancelWithdrawal(uint256 depositId) external",
+  "function emergencyWithdraw(uint256 depositId) external",
+  "function setDefaults(uint256 lockDuration, uint256 cooldown) external",
+  "function setEmergencyPenalty(uint256 penaltyBps, address recipient) external",
+  "function getDeposit(uint256 depositId) external view returns (tuple(uint256 id, uint256 amount, uint256 lockedUntil, uint256 requestedAt, uint256 cooldown, bool withdrawn, string label))",
+  "function getAllDeposits() external view returns (tuple(uint256 id, uint256 amount, uint256 lockedUntil, uint256 requestedAt, uint256 cooldown, bool withdrawn, string label)[])",
+  "function getActiveDeposits() external view returns (tuple(uint256 id, uint256 amount, uint256 lockedUntil, uint256 requestedAt, uint256 cooldown, bool withdrawn, string label)[])",
+  "function balance() external view returns (uint256)",
+  "function canRequestWithdrawal(uint256 depositId) external view returns (bool)",
+  "function canExecuteWithdrawal(uint256 depositId) external view returns (bool)",
+  "function timeUntilUnlock(uint256 depositId) external view returns (uint256)",
+  "function totalDeposited() external view returns (uint256)",
+  "function totalWithdrawn() external view returns (uint256)",
+  "event Deposited(uint256 indexed depositId, uint256 amount, uint256 lockedUntil, uint256 cooldown, string label)",
+  "event WithdrawalRequested(uint256 indexed depositId, uint256 executeAfter)",
+  "event WithdrawalExecuted(uint256 indexed depositId, uint256 amount)",
+  "event WithdrawalCancelled(uint256 indexed depositId)",
+  "event EmergencyWithdrawal(uint256 indexed depositId, uint256 amountSent, uint256 penalty)"
+];
 
-  if (!amount || amount <= 0) return toast('Enter a valid amount', 'error');
-  if (amount > state.walletBalance) return toast('Insufficient wallet balance', 'error');
-  if (!lock || lock < 60) return toast('Lock duration must be ≥ 60 seconds', 'error');
-  if (!cool || cool < 60) return toast('Cooldown must be ≥ 60 seconds', 'error');
+let provider, signer, contract;
 
-  const now = Date.now() / 1000;
-  const dep = {
-    id: state.nextId++,
-    amount,
-    label,
-    lockedUntil: now + lock,
-    cooldown: cool,
-    requestedAt: 0,
-    withdrawn: false,
-    createdAt: now,
+function decodeCustomError(err) {
+  const raw = err?.data || err?.error?.data || err?.info?.error?.data || "";
+  if (typeof raw !== "string" || !raw.startsWith("0x") || raw.length < 10) {
+    return null;
+  }
+
+  const selector = raw.slice(0, 10).toLowerCase();
+  const arg = (index) => {
+    const start = 10 + index * 64;
+    const end = start + 64;
+    if (raw.length < end) return null;
+    return BigInt("0x" + raw.slice(start, end));
   };
 
-  state.deposits.push(dep);
-  state.walletBalance = Math.max(0, state.walletBalance - amount);
-  addHistory('deposit', dep.id, dep.amount, now);
+  if (selector === "0x30cd7471") return { message: "Only the contract owner can do this action." }; // NotOwner()
+  if (selector === "0x1f2a2005") return { message: "Deposit amount must be greater than zero." }; // ZeroAmount()
+  if (selector === "0x613970e0") return { message: "Invalid parameter value." }; // InvalidParameter()
+  if (selector === "0xac2ded58") return { message: "Deposit not found." }; // DepositNotFound(uint256)
+  if (selector === "0x54225c2b") return { message: "This deposit was already withdrawn." }; // AlreadyWithdrawn(uint256)
+  if (selector === "0xfff6966e") return { message: "Withdrawal already requested for this deposit." }; // WithdrawalAlreadyRequested(uint256)
+  if (selector === "0x3551ebb9") return { message: "You must request withdrawal before executing or canceling." }; // NoWithdrawalRequested(uint256)
+  if (selector === "0x90b8ec18") return { message: "ETH transfer failed in contract." }; // TransferFailed()
 
-  closeModal('modal-deposit');
-  toast(`Deposited ${fmt(amount)} ETH · Locked for ${fmtDuration(lock)}`, 'success');
-  render();
+  if (selector === "0x180be003") { // LockNotExpired(uint256,uint256)
+    const lockedUntil = arg(1);
+    if (lockedUntil !== null) {
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      const remaining = lockedUntil > now ? Number(lockedUntil - now) : 0;
+      return {
+        message: `Deposit is still locked. Time remaining: ${fmtTime(remaining)}.`
+      };
+    }
+    return { message: "Deposit is still locked." };
+  }
+
+  if (selector === "0xd9bcb096") { // CooldownNotElapsed(uint256,uint256)
+    const executeAfter = arg(1);
+    if (executeAfter !== null) {
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      const remaining = executeAfter > now ? Number(executeAfter - now) : 0;
+      return {
+        message: `Cooldown not elapsed. You can execute in ${fmtTime(remaining)}.`
+      };
+    }
+    return { message: "Cooldown not elapsed yet." };
+  }
+
+  return null;
 }
 
-function requestWithdrawal(id) {
-  const dep = state.deposits.find(d => d.id === id);
-  if (!dep || dep.withdrawn || dep.requestedAt) return;
-  const now = Date.now() / 1000;
-  if (now < dep.lockedUntil) return toast('Deposit is still locked', 'error');
-  dep.requestedAt = now;
-  addHistory('request', id, dep.amount, now);
-  toast(`Withdrawal requested. Execute in ${fmtDuration(dep.cooldown)}`, 'info');
-  render();
+function toUserError(err, fallback) {
+  const decoded = decodeCustomError(err);
+  if (decoded?.message) return decoded.message;
+  return err?.reason || err?.shortMessage || err?.message || fallback;
 }
 
-function executeWithdrawal(id) {
-  const dep = state.deposits.find(d => d.id === id);
-  if (!dep || dep.withdrawn || !dep.requestedAt) return;
-  if (!canExecute(dep)) return toast('Cooldown period has not elapsed', 'error');
-  dep.withdrawn = true;
-  state.walletBalance += dep.amount;
-  state.totalWithdrawn += dep.amount;
-  addHistory('execute', id, dep.amount, Date.now() / 1000);
-  toast(`Withdrew ${fmt(dep.amount)} ETH to wallet`, 'success');
-  render();
+async function initContract() {
+  if (typeof window.ethereum === "undefined") {
+    toast("MetaMask not found. Running in demo mode.", "info");
+    return false;
+  }
+  const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+  if (!accounts.length) return false;
+  const chainId = await window.ethereum.request({ method: "eth_chainId" });
+  if (parseInt(chainId, 16) !== 31337) {
+    toast("Wrong network! Switch MetaMask to Hardhat localhost (chainId 31337)", "error");
+    return false;
+  }
+  provider = new ethers.BrowserProvider(window.ethereum);
+  signer   = await provider.getSigner();
+  contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+  contract.on("Deposited", (id, amount, lockedUntil, cooldown, label) => {
+    toast(`On-chain: Deposited ${ethers.formatEther(amount)} ETH — "${label}"`, "success");
+    loadContractState();
+  });
+  contract.on("WithdrawalExecuted", (id, amount) => {
+    toast(`On-chain: Withdrew ${ethers.formatEther(amount)} ETH`, "success");
+    loadContractState();
+  });
+  contract.on("EmergencyWithdrawal", (id, amountSent, penalty) => {
+    toast(`Emergency: Received ${ethers.formatEther(amountSent)} ETH (penalty: ${ethers.formatEther(penalty)} ETH)`, "error");
+    loadContractState();
+  });
+  return true;
 }
 
-function cancelWithdrawal(id) {
-  const dep = state.deposits.find(d => d.id === id);
-  if (!dep || !dep.requestedAt) return;
-  dep.requestedAt = 0;
-  addHistory('cancel', id, dep.amount, Date.now() / 1000);
-  toast('Withdrawal request cancelled', 'info');
-  render();
+async function loadContractState() {
+  if (!contract) return;
+  try {
+    const rawDeposits = await contract.getActiveDeposits();
+    state.deposits = rawDeposits.map(d => ({
+      id:          Number(d.id),
+      amount:      parseFloat(ethers.formatEther(d.amount)),
+      label:       d.label || `Deposit #${d.id}`,
+      lockedUntil: Number(d.lockedUntil),
+      cooldown:    Number(d.cooldown),
+      requestedAt: Number(d.requestedAt),
+      withdrawn:   d.withdrawn,
+      createdAt:   Number(d.lockedUntil) - Number(d.cooldown),
+    }));
+    const totalDep = await contract.totalDeposited();
+    const totalWit = await contract.totalWithdrawn();
+    state.totalWithdrawn = parseFloat(ethers.formatEther(totalWit));
+    const balWei = await provider.getBalance(signer.address);
+    state.walletBalance = parseFloat(ethers.formatEther(balWei));
+    render();
+  } catch (err) {
+    console.error("Failed to load contract state:", err);
+    toast("Could not read contract state: " + err.message, "error");
+  }
+}
+
+async function createDeposit() {
+  if (!contract) return createDepositDemo();
+  const amount = document.getElementById("dep-amount").value;
+  const label  = document.getElementById("dep-label").value.trim() || "Unnamed Deposit";
+  const lock   = parseInt(document.getElementById("dep-lock").value);
+  const cool   = parseInt(document.getElementById("dep-cool").value);
+  if (!amount || parseFloat(amount) <= 0) return toast("Enter a valid amount", "error");
+  if (!lock || lock < 60) return toast("Lock duration must be ≥ 60 seconds", "error");
+  if (!cool || cool < 60) return toast("Cooldown must be ≥ 60 seconds", "error");
+  try {
+    toast("Sending transaction…", "info");
+    const tx = await contract.depositWithDuration(lock, cool, label, { value: ethers.parseEther(amount) });
+    toast("Transaction sent. Waiting for confirmation…", "info");
+    await tx.wait();
+    closeModal("modal-deposit");
+    toast(`Deposited ${amount} ETH — locked for ${fmtDuration(lock)}`, "success");
+    await loadContractState();
+  } catch (err) {
+    toast("Transaction failed: " + toUserError(err, "Unknown error"), "error");
+  }
+}
+
+async function requestWithdrawal(id) {
+  if (!contract) return requestWithdrawalDemo(id);
+  try {
+    toast("Requesting withdrawal…", "info");
+    const tx = await contract.requestWithdrawal(id);
+    await tx.wait();
+    await loadContractState();
+  } catch (err) {
+    toast("Failed: " + toUserError(err, "Unknown error"), "error");
+  }
+}
+
+async function executeWithdrawal(id) {
+  if (!contract) return executeWithdrawalDemo(id);
+  try {
+    toast("Executing withdrawal…", "info");
+    const tx = await contract.executeWithdrawal(id);
+    await tx.wait();
+    await loadContractState();
+  } catch (err) {
+    toast("Failed: " + toUserError(err, "Unknown error"), "error");
+  }
+}
+
+async function cancelWithdrawal(id) {
+  if (!contract) return cancelWithdrawalDemo(id);
+  try {
+    const tx = await contract.cancelWithdrawal(id);
+    await tx.wait();
+    toast("Withdrawal cancelled", "info");
+    await loadContractState();
+  } catch (err) {
+    toast("Failed: " + toUserError(err, "Unknown error"), "error");
+  }
 }
 
 function openEmergency(id) {
+  state.emergency.depositId = id;
   const dep = state.deposits.find(d => d.id === id);
   if (!dep) return;
-  state.emergency.depositId = id;
   const penalty = dep.amount * (state.penaltyPct / 100);
   const payout  = dep.amount - penalty;
   document.getElementById('em-penalty-pct').textContent = state.penaltyPct + '%';
@@ -1047,7 +1186,67 @@ function openEmergency(id) {
   openModal('modal-emergency');
 }
 
-function confirmEmergency() {
+async function confirmEmergency() {
+  if (!contract) return confirmEmergencyDemo();
+  const id = state.emergency.depositId;
+  try {
+    toast("Sending emergency withdrawal…", "info");
+    const tx = await contract.emergencyWithdraw(id);
+    await tx.wait();
+    closeModal("modal-emergency");
+    await loadContractState();
+  } catch (err) {
+    toast("Failed: " + toUserError(err, "Unknown error"), "error");
+  }
+}
+
+// Demo fallbacks (kept for logic reference)
+function createDepositDemo() {
+  const amount = parseFloat(document.getElementById('dep-amount').value);
+  const label = document.getElementById('dep-label').value.trim() || 'Unnamed Deposit';
+  const lock = parseInt(document.getElementById('dep-lock').value);
+  const cool = parseInt(document.getElementById('dep-cool').value);
+  if (!amount || amount <= 0) return toast('Enter a valid amount', 'error');
+  if (amount > state.walletBalance) return toast('Insufficient wallet balance', 'error');
+  const now = Date.now() / 1000;
+  const dep = { id: state.nextId++, amount, label, lockedUntil: now+lock, cooldown: cool, requestedAt: 0, withdrawn: false, createdAt: now };
+  state.deposits.push(dep);
+  state.walletBalance -= amount;
+  addHistory('deposit', dep.id, dep.amount, now);
+  closeModal('modal-deposit');
+  toast(`Deposited ${fmt(amount)} ETH · Locked for ${fmtDuration(lock)}`, 'success');
+  render();
+}
+function requestWithdrawalDemo(id) {
+  const dep = state.deposits.find(d => d.id === id);
+  if (!dep || dep.withdrawn || dep.requestedAt) return;
+  const now = Date.now() / 1000;
+  if (now < dep.lockedUntil) return toast('Deposit is still locked', 'error');
+  dep.requestedAt = now;
+  addHistory('request', id, dep.amount, now);
+  toast(`Withdrawal requested. Execute in ${fmtDuration(dep.cooldown)}`, 'info');
+  render();
+}
+function executeWithdrawalDemo(id) {
+  const dep = state.deposits.find(d => d.id === id);
+  if (!dep || dep.withdrawn || !dep.requestedAt) return;
+  if (!canExecute(dep)) return toast('Cooldown period has not elapsed', 'error');
+  dep.withdrawn = true;
+  state.walletBalance += dep.amount;
+  state.totalWithdrawn += dep.amount;
+  addHistory('execute', id, dep.amount, Date.now() / 1000);
+  toast(`Withdrew ${fmt(dep.amount)} ETH to wallet`, 'success');
+  render();
+}
+function cancelWithdrawalDemo(id) {
+  const dep = state.deposits.find(d => d.id === id);
+  if (!dep || !dep.requestedAt) return;
+  dep.requestedAt = 0;
+  addHistory('cancel', id, dep.amount, Date.now() / 1000);
+  toast('Withdrawal request cancelled', 'info');
+  render();
+}
+function confirmEmergencyDemo() {
   const id = state.emergency.depositId;
   const dep = state.deposits.find(d => d.id === id);
   if (!dep) return;
@@ -1058,7 +1257,7 @@ function confirmEmergency() {
   state.totalWithdrawn += dep.amount;
   addHistory('emergency', id, payout, Date.now() / 1000);
   closeModal('modal-emergency');
-  toast(`Emergency withdrawal. Received ${fmt(payout)} ETH (${state.penaltyPct}% penalty applied)`, 'error');
+  toast(`Emergency withdrawal. Received ${fmt(payout)} ETH`, 'error');
   render();
 }
 
@@ -1168,6 +1367,23 @@ function updateDepositPreview() {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+document.getElementById('btn-connect').addEventListener('click', async () => {
+  const ok = await initContract();
+  if (!ok) return;
+
+  const addr = await signer.getAddress();
+  document.getElementById('btn-connect').textContent = addr.slice(0,6) + '…' + addr.slice(-4);
+  document.getElementById('net-badge').textContent = '● LOCALHOST';
+  document.getElementById('net-badge').className = 'net-badge connected';
+  toast('Wallet connected: ' + addr.slice(0,6) + '…' + addr.slice(-4), 'success');
+
+  // Load all existing deposits from the chain
+  await loadContractState();
+});
+
+// ── Start ──
+init();
+
 function openDepositModal() {
   document.getElementById('dep-amount').value = '';
   document.getElementById('dep-label').value  = '';
@@ -1202,35 +1418,10 @@ function toast(msg, type = 'info') {
   setTimeout(() => el.remove(), 3500);
 }
 
-// ═══════════════════════════════════════════
-//  Connect Wallet (MetaMask)
-// ═══════════════════════════════════════════
-document.getElementById('btn-connect').addEventListener('click', async () => {
-  if (typeof window.ethereum === 'undefined') {
-    toast('MetaMask not detected — running in demo mode', 'info');
-    return;
-  }
-  try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (accounts.length) {
-      const addr = accounts[0];
-      document.getElementById('btn-connect').textContent = addr.slice(0,6) + '…' + addr.slice(-4);
-      document.getElementById('net-badge').textContent   = '● MAINNET';
-      document.getElementById('net-badge').className     = 'net-badge connected';
-      toast('Wallet connected: ' + addr.slice(0,6) + '…' + addr.slice(-4), 'success');
-    }
-  } catch(e) {
-    toast('Connection rejected', 'error');
-  }
-});
-
 // ── Input listeners for preview ──
 document.getElementById('dep-amount')?.addEventListener('input', updateDepositPreview);
 document.getElementById('dep-lock')?.addEventListener('input', updateDepositPreview);
 document.getElementById('dep-cool')?.addEventListener('input', updateDepositPreview);
-
-// ── Start ──
-init();
 </script>
 </body>
 </html>

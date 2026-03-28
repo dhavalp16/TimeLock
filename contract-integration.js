@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════
 
 // 1. Paste your deployed address here:
-const CONTRACT_ADDRESS = "0xYourDeployedAddressHere";
+const CONTRACT_ADDRESS = "0x8464135c8F25Da09e49BC8782676a84730C318bC";
 
 // 2. Paste the ABI array from deployment.json here:
 const ABI = [
