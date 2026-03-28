@@ -1,0 +1,15 @@
+{
+  "name": "timelock-wallet",
+  "version": "1.0.0",
+  "description": "TimelockWallet smart contract + frontend",
+  "scripts": {
+    "node":    "npx hardhat node",
+    "compile": "npx hardhat compile",
+    "deploy":  "npx hardhat run scripts/deploy.js --network localhost",
+    "test":    "npx hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.22.0"
+  }
+}
